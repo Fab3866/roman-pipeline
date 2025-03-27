@@ -1,0 +1,41 @@
+Ce README.md est un bon début pour décrire le concept de base de votre application. Il explique clairement le workflow en 5 étapes du processus d'écriture.
+
+Je suggérerais d'y ajouter quelques informations supplémentaires pour le rendre plus complet et utile pour les utilisateurs :
+
+1. **Un titre principal** pour le projet
+2. **Une brève description** de ce qu'est un "pipeline d'écriture de roman"
+3. **Des détails d'installation** et de configuration 
+4. **Une mention** de l'utilisation de l'API Claude d'Anthropic
+
+Voici une version améliorée que vous pourriez utiliser :
+
+```markdown
+# Pipeline d'Écriture de Roman avec Claude
+
+Création d'un assistant d'écriture créative semi-automatisé utilisant l'API Claude d'Anthropic pour faciliter le processus d'écriture.
+
+## Workflow en 5 étapes
+
+Le workflow s'exécute en 5 étapes séquentielles :
+
+1. **Outline** : Soumission d'une outline pré-rédigée de votre histoire
+2. **Synopsis** : À partir de cette outline, production d'un synopsis détaillé du roman
+3. **Chapter Beats** : À partir du synopsis, production des points clés de chaque chapitre
+4. **Scene Beats** : À partir des chapter beats, production des scènes détaillées
+5. **Prose** : Enfin, à partir des scene beats, rédaction de la prose des scènes, une par une
+
+## Installation
+
+1. Clonez ce dépôt
+2. Installez les dépendances avec `npm install`
+3. Copiez `.env.example` vers `.env` et ajoutez votre clé API Anthropic
+4. Démarrez l'application avec `npm start`
+5. Ouvrez votre navigateur à l'adresse `http://localhost:3000`
+
+## Prérequis
+
+- Node.js
+- Une clé API Anthropic (obtenue sur [console.anthropic.com](https://console.anthropic.com/))
+```
+
+Cette version est plus complète tout en restant concise. Elle contient les informations essentielles pour comprendre et utiliser le projet.
