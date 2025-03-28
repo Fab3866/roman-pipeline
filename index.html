@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline d'Écriture de Roman</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        
+        .step-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #ddd;
+            z-index: 1;
+        }
+        
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            position: relative;
+            z-index: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .step.completed {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .step-name {
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        .panel {
+            display: none;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .preview-container {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .preview-container h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .scene-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .scene-selector {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pipeline d'Écriture de Roman</h1>
+    
+    <div id="api-settings" style="text-align: right; margin-bottom: 20px;">
+        <button onclick="showApiSettings()" style="background-color: #34495e;">Configurer l'API Claude</button>
+    </div>
+<div id="api-settings-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 100;">
+        <div style="background-color: white; max-width: 600px; margin: 100px auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            <h2>Configuration de l'API Claude</h2>
+            <p>Configurer le modèle Claude à utiliser avec le serveur proxy sécurisé.</p>
+            <div style="background-color: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <p style="margin: 0;"><strong>Sécurité améliorée :</strong></p>
+                <p style="margin-top: 5px; margin-bottom: 0;">
+                    Cette application utilise un serveur proxy pour protéger votre clé API.
+                    Au lieu de stocker la clé dans le navigateur, elle est conservée de manière sécurisée
+                    sur le serveur comme variable d'environnement.
+                </p>
+            </div>
+            
+            <div style="background-color: #f5f5f5; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <p style="margin: 0;"><strong>Instructions de configuration serveur :</strong></p>
+                <ol style="margin-top: 5px; margin-bottom: 0;">
+                    <li>Assurez-vous que le serveur Node.js est configuré et en cours d'exécution</li>
+                    <li>Votre clé API doit être définie dans le fichier .env sur le serveur</li>
+                    <li>Le serveur doit fonctionner sur http://localhost:3000</li>
+                </ol>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="api-model" style="display: block; margin-bottom: 5px; font-weight: bold;">Modèle:</label>
+                <select id="api-model" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="claude-3-haiku-20240307">Claude 3 Haiku (plus rapide)</option>
+                    <option value="claude-3-sonnet-20240229">Claude 3 Sonnet (équilibré)</option>
+                    <option value="claude-3-opus-20240229" selected>Claude 3 Opus (plus créatif)</option>
+                    <option value="claude-3.5-sonnet-20240620">Claude 3.5 Sonnet</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="cancelApiSettings()" style="margin-right: 10px; background-color: #95a5a6;">Annuler</button>
+                <button onclick="saveApiSettings()" style="background-color: #2ecc71;">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="step-indicator">
+        <div class="step active" id="step-1" onclick="goToStep(1)">
+            1
+            <span class="step-name">Outline</span>
+        </div>
+        <div class="step" id="step-2" onclick="goToStep(2)">
+            2
+            <span class="step-name">Synopsis</span>
+        </div>
+        <div class="step" id="step-3" onclick="goToStep(3)">
+            3
+            <span class="step-name">Chapter Beats</span>
+        </div>
+        <div class="step" id="step-4" onclick="goToStep(4)">
+            4
+            <span class="step-name">Scene Beats</span>
+        </div>
+        <div class="step" id="step-5" onclick="goToStep(5)">
+            5
+            <span class="step-name">Prose</span>
+        </div>
+    </div>
+<div class="panel active" id="panel-1">
+        <h2>Étape 1: Outline du Projet</h2>
+        <p>Entrez l'outline de votre projet de roman ici.</p>
+        <textarea id="outline-input" placeholder="Entrez votre outline ici..."></textarea>
+        <div class="button-container">
+            <button onclick="saveAndReset()">Réinitialiser</button>
+            <button onclick="proceedToStep(2)">Passer à l'étape 2: Synopsis</button>
+        </div>
+    </div>
+    
+    <div class="panel" id="panel-2">
+        <h2>Étape 2: Synopsis</h2>
+        <p>Générez ou éditez le synopsis basé sur l'outline.</p>
+        <textarea id="synopsis-input" placeholder="Votre synopsis apparaîtra ici..."></textarea>
+        <div class="button-container">
+            <button onclick="goToStep(1)">Retour à l'Outline</button>
+            <button onclick="proceedToStep(3)">Passer à l'étape 3: Chapter Beats</button>
+        </div>
+        
+        <div class="preview-container">
+            <h3>Outline Original:</h3>
+            <div id="outline-preview"></div>
+        </div>
+    </div>
+    
+    <div class="panel" id="panel-3">
+        <h2>Étape 3: Chapter Beats</h2>
+        <p>Définissez les points clés de chaque chapitre basés sur le synopsis.</p>
+        <textarea id="chapter-beats-input" placeholder="Vos chapter beats apparaîtront ici..."></textarea>
+        <div class="button-container">
+            <button onclick="goToStep(2)">Retour au Synopsis</button>
+            <button onclick="proceedToStep(4)">Passer à l'étape 4: Scene Beats</button>
+        </div>
+        
+        <div class="preview-container">
+            <h3>Synopsis:</h3>
+            <div id="synopsis-preview"></div>
+        </div>
+    </div>
+    
+    <div class="panel" id="panel-4">
+        <h2>Étape 4: Scene Beats</h2>
+        <p>Détaillez chaque scène basée sur les chapter beats.</p>
+        <textarea id="scene-beats-input" placeholder="Vos scene beats apparaîtront ici..."></textarea>
+        <div class="button-container">
+            <button onclick="goToStep(3)">Retour aux Chapter Beats</button>
+            <button onclick="proceedToStep(5)">Passer à l'étape 5: Prose</button>
+        </div>
+        
+        <div class="preview-container">
+            <h3>Chapter Beats:</h3>
+            <div id="chapter-beats-preview"></div>
+        </div>
+    </div>
+    
+    <div class="panel" id="panel-5">
+        <h2>Étape 5: Prose</h2>
+        <p>Rédigez la prose finale basée sur les scene beats.</p>
+        
+        <div class="scene-container">
+            <select id="scene-selector" class="scene-selector">
+                <option value="">Sélectionnez une scène à rédiger...</option>
+            </select>
+            
+            <textarea id="prose-input" placeholder="Rédigez la prose pour la scène sélectionnée ici..."></textarea>
+        </div>
+        
+        <div class="button-container">
+            <button onclick="goToStep(4)">Retour aux Scene Beats</button>
+            <button onclick="saveProseAndContinue()">Sauvegarder et continuer</button>
+            <button onclick="exportNovel()">Exporter le Roman</button>
+        </div>
+        
+        <div class="preview-container">
+            <h3>Scene Beats:</h3>
+            <div id="scene-beats-preview"></div>
+        </div>
+    </div>
+<script>
+        // Configuration de l'API
+        const API_CONFIG = {
+            model: "claude-3-opus-20240229"  // Nom du modèle à utiliser par défaut
+        };
+        
+        // Fonction pour générer du contenu avec un LLM
+        async function generateContentWithLLM(fromStep, toStep) {
+            // Vérifier que la configuration de l'API est complète
+            if (!API_CONFIG.model) {
+                alert("Configuration de l'API incomplète. Veuillez configurer votre API LLM dans les paramètres.");
+                return "[Configuration API requise pour la génération automatique]";
+            }
+            
+            // Déterminer le contenu source et la tâche en fonction des étapes
+            let sourceContent = "";
+            let prompt = "";
+            
+            switch(fromStep) {
+                case 1: // De Outline à Synopsis
+                    sourceContent = document.getElementById('outline-input').value;
+                    prompt = `Transforme cette outline de roman en un synopsis cohérent et complet:\n\n${sourceContent}`;
+                    break;
+                case 2: // De Synopsis à Chapter Beats
+                    sourceContent = document.getElementById('synopsis-input').value;
+                    prompt = `À partir de ce synopsis, crée une structure détaillée par chapitre (chapter beats):\n\n${sourceContent}`;
+                    break;
+                case 3: // De Chapter Beats à Scene Beats
+                    sourceContent = document.getElementById('chapter-beats-input').value;
+                    prompt = `À partir de ces chapter beats, développe des scene beats détaillés pour chaque scène:\n\n${sourceContent}`;
+                    break;
+                case 4: // De Scene Beats à Prose (pour une scène spécifique)
+                    sourceContent = document.getElementById('scene-beats-input').value;
+                    const sceneSelector = document.getElementById('scene-selector');
+                    const selectedScene = sceneSelector.options[sceneSelector.selectedIndex].textContent;
+                    
+                    // Extraire juste les informations pour cette scène
+                    const sceneLines = sourceContent.split('\n');
+                    let sceneContent = "";
+                    let inSelectedScene = false;
+                    
+                    for (const line of sceneLines) {
+                        if (line.includes(selectedScene)) {
+                            inSelectedScene = true;
+                            sceneContent += line + '\n';
+                        } else if (inSelectedScene && line.trim().toLowerCase().startsWith('scène')) {
+                            break; // Nouvelle scène trouvée, arrêter
+                        } else if (inSelectedScene) {
+                            sceneContent += line + '\n';
+                        }
+                    }
+                    
+                    prompt = `Rédige la prose complète pour cette scène à partir de ces scene beats:\n\n${sceneContent}`;
+                    break;
+                default:
+                    return "Étape non reconnue pour la génération de contenu.";
+            }
+            
+            // Afficher un indicateur de chargement
+            const nextInput = document.getElementById(`${getInputIdForStep(toStep)}-input`);
+            nextInput.value = "Génération en cours, veuillez patienter...";
+            
+            // Appel à l'API via le serveur proxy local
+            try {
+                const response = await fetch('http://localhost:3000/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        prompt: prompt,
+                        systemPrompt: "Tu es un assistant d'écriture professionnel expert qui aide à développer des romans. Tu fournis des réponses détaillées et créatives pour transformer des idées en histoires complètes."
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Structure de réponse spécifique à Anthropic (via notre proxy)
+                if (data.content && data.content.length > 0) {
+                    return data.content[0].text;
+                } else {
+                    throw new Error("Format de réponse de l'API non reconnu");
+                }
+            } catch (error) {
+                console.error("Erreur lors de l'appel à l'API:", error);
+                throw error;
+            }
+        }
+// Structure de données pour stocker l'état du projet
+        let projectData = {
+            outline: '',
+            synopsis: '',
+            chapterBeats: '',
+            sceneBeats: '',
+            scenes: {}
+        };
+        
+        // Charger les données depuis le stockage local si elles existent
+        function loadProjectData() {
+            const savedData = localStorage.getItem('novelPipelineData');
+            if (savedData) {
+                projectData = JSON.parse(savedData);
+                
+                // Remplir les champs avec les données sauvegardées
+                document.getElementById('outline-input').value = projectData.outline;
+                document.getElementById('synopsis-input').value = projectData.synopsis;
+                document.getElementById('chapter-beats-input').value = projectData.chapterBeats;
+                document.getElementById('scene-beats-input').value = projectData.sceneBeats;
+                
+                // Mettre à jour les prévisualisations
+                document.getElementById('outline-preview').textContent = projectData.outline;
+                document.getElementById('synopsis-preview').textContent = projectData.synopsis;
+                document.getElementById('chapter-beats-preview').textContent = projectData.chapterBeats;
+                document.getElementById('scene-beats-preview').textContent = projectData.sceneBeats;
+                
+                // Mettre à jour le sélecteur de scènes
+                updateSceneSelector();
+            }
+        }
+        
+        // Sauvegarder les données du projet dans le stockage local
+        function saveProjectData() {
+            projectData.outline = document.getElementById('outline-input').value;
+            projectData.synopsis = document.getElementById('synopsis-input').value;
+            projectData.chapterBeats = document.getElementById('chapter-beats-input').value;
+            projectData.sceneBeats = document.getElementById('scene-beats-input').value;
+            
+            localStorage.setItem('novelPipelineData', JSON.stringify(projectData));
+        }
+        
+        // Naviguer vers une étape spécifique
+        function goToStep(step) {
+            // Sauvegarder les données avant de changer d'étape
+            saveProjectData();
+            
+            // Masquer tous les panneaux et réinitialiser les états des étapes
+            document.querySelectorAll('.panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.step').forEach(stepEl => {
+                stepEl.classList.remove('active');
+            });
+            
+            // Activer le panneau et l'étape correspondante
+            document.getElementById(`panel-${step}`).classList.add('active');
+            document.getElementById(`step-${step}`).classList.add('active');
+            
+            // Mettre à jour les prévisualisations
+            updatePreviews();
+        }
+        
+        // Passer à l'étape suivante avec validation
+        function proceedToStep(step) {
+            const currentStep = step - 1;
+            const currentInput = document.getElementById(`${getInputIdForStep(currentStep)}-input`).value;
+            
+            if (!currentInput.trim()) {
+                alert(`Veuillez remplir le contenu de l'étape ${currentStep} avant de continuer.`);
+                return;
+            }
+            
+            // Marquer l'étape actuelle comme complétée
+            document.getElementById(`step-${currentStep}`).classList.add('completed');
+            
+            // Aller à l'étape suivante
+            goToStep(step);
+            
+            // Générer automatiquement le contenu de l'étape suivante via l'API LLM
+            const nextInput = document.getElementById(`${getInputIdForStep(step)}-input`);
+            if (!nextInput.value.trim()) {
+                // Ici, il faudrait appeler l'API du LLM
+                generateContentWithLLM(currentStep, step)
+                    .then(generatedContent => {
+                        nextInput.value = generatedContent;
+                        saveProjectData();
+                    })
+                    .catch(error => {
+                        console.error("Erreur lors de la génération de contenu:", error);
+                        nextInput.value = `[Échec de la génération automatique]\n\nVeuillez rédiger manuellement ou réessayer.`;
+                    });
+            }
+        }
+        
+        // Obtenir l'identifiant d'entrée pour une étape donnée
+        function getInputIdForStep(step) {
+            const inputIds = ['outline', 'synopsis', 'chapter-beats', 'scene-beats', 'prose'];
+            return inputIds[step - 1];
+        }
+// Mettre à jour les prévisualisations
+        function updatePreviews() {
+            document.getElementById('outline-preview').textContent = projectData.outline;
+            document.getElementById('synopsis-preview').textContent = projectData.synopsis;
+            document.getElementById('chapter-beats-preview').textContent = projectData.chapterBeats;
+            document.getElementById('scene-beats-preview').textContent = projectData.sceneBeats;
+            
+            updateSceneSelector();
+        }
+        
+        // Réinitialiser le projet
+        function saveAndReset() {
+            if (confirm('Êtes-vous sûr de vouloir réinitialiser le projet ? Toutes les données seront effacées.')) {
+                localStorage.removeItem('novelPipelineData');
+                projectData = {
+                    outline: '',
+                    synopsis: '',
+                    chapterBeats: '',
+                    sceneBeats: '',
+                    scenes: {}
+                };
+                
+                document.getElementById('outline-input').value = '';
+                document.getElementById('synopsis-input').value = '';
+                document.getElementById('chapter-beats-input').value = '';
+                document.getElementById('scene-beats-input').value = '';
+                document.getElementById('prose-input').value = '';
+                
+                // Réinitialiser les prévisualisations
+                document.getElementById('outline-preview').textContent = '';
+                document.getElementById('synopsis-preview').textContent = '';
+                document.getElementById('chapter-beats-preview').textContent = '';
+                document.getElementById('scene-beats-preview').textContent = '';
+                
+                // Réinitialiser les étapes
+                document.querySelectorAll('.step').forEach(step => {
+                    step.classList.remove('active', 'completed');
+                });
+                
+                document.getElementById('step-1').classList.add('active');
+                
+                // Réinitialiser les panneaux
+                document.querySelectorAll('.panel').forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                
+                document.getElementById('panel-1').classList.add('active');
+                
+                // Vider le sélecteur de scènes
+                updateSceneSelector();
+            }
+        }
+        
+        // Mettre à jour le sélecteur de scènes
+        function updateSceneSelector() {
+            const sceneBeats = projectData.sceneBeats;
+            const selector = document.getElementById('scene-selector');
+            
+            // Vider le sélecteur
+            selector.innerHTML = '<option value="">Sélectionnez une scène à rédiger...</option>';
+            
+            if (sceneBeats) {
+                // Analyser les scènes à partir des scene beats
+                // Cette implémentation est simplifiée, elle suppose que chaque ligne commençant par "Scène" est une scène distincte
+                const sceneLines = sceneBeats.split('\n');
+                let currentScene = '';
+                let sceneCount = 0;
+                
+                sceneLines.forEach(line => {
+                    if (line.trim().toLowerCase().startsWith('scène') || line.trim().toLowerCase().startsWith('scene')) {
+                        sceneCount++;
+                        currentScene = line.trim();
+                        
+                        const option = document.createElement('option');
+                        option.value = `scene-${sceneCount}`;
+                        option.textContent = currentScene;
+                        selector.appendChild(option);
+                    }
+                });
+                
+                // Si aucune scène n'a été trouvée, ajouter une option générique
+                if (sceneCount === 0) {
+                    const option = document.createElement('option');
+                    option.value = 'scene-1';
+                    option.textContent = 'Scène 1';
+                    selector.appendChild(option);
+                }
+            }
+            
+            // Écouter les changements de scène
+            selector.addEventListener('change', function() {
+                const selectedScene = this.value;
+                if (selectedScene) {
+                    const proseInput = document.getElementById('prose-input');
+                    proseInput.value = projectData.scenes[selectedScene] || '';
+                    
+                    // Si la scène n'a pas encore de contenu et que les scene beats existent,
+                    // générer automatiquement la prose
+                    if (!projectData.scenes[selectedScene] && projectData.sceneBeats) {
+                        generateContentWithLLM(4, 5)
+                            .then(generatedContent => {
+                                proseInput.value = generatedContent;
+                                projectData.scenes[selectedScene] = generatedContent;
+                                saveProjectData();
+                            })
+                            .catch(error => {
+                                console.error("Erreur lors de la génération de la prose:", error);
+                            });
+                    }
+                }
+            });
+        }
+        
+        // Sauvegarder la prose et continuer
+        function saveProseAndContinue() {
+            const selector = document.getElementById('scene-selector');
+            const selectedScene = selector.value;
+            
+            if (!selectedScene) {
+                alert('Veuillez sélectionner une scène à rédiger.');
+                return;
+            }
+            
+            const proseInput = document.getElementById('prose-input').value;
+            
+            if (!proseInput.trim()) {
+                alert('Veuillez rédiger du contenu pour cette scène avant de continuer.');
+                return;
+            }
+            
+            // Sauvegarder la prose pour cette scène
+            projectData.scenes[selectedScene] = proseInput;
+            saveProjectData();
+            
+            // Passer à la scène suivante si possible
+            const options = selector.options;
+            let nextSceneIndex = -1;
+            
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === selectedScene) {
+                    nextSceneIndex = i + 1;
+                    break;
+                }
+            }
+            
+            if (nextSceneIndex < options.length) {
+                selector.value = options[nextSceneIndex].value;
+                document.getElementById('prose-input').value = projectData.scenes[options[nextSceneIndex].value] || '';
+                
+                // Déclencher l'événement change pour générer du contenu si nécessaire
+                const event = new Event('change');
+                selector.dispatchEvent(event);
+            } else {
+                alert('Vous avez terminé la rédaction de toutes les scènes !');
+            }
+        }
+        
+        // Exporter le roman complet
+        function exportNovel() {
+            saveProjectData();
+            
+            let novelContent = `# Roman: Basé sur l'outline\n\n`;
+            novelContent += `## Synopsis\n\n${projectData.synopsis}\n\n`;
+            novelContent += `## Contenu\n\n`;
+            
+            // Parcourir toutes les scènes dans l'ordre
+            const selector = document.getElementById('scene-selector');
+            const options = selector.options;
+            
+            for (let i = 1; i < options.length; i++) {
+                const sceneKey = options[i].value;
+                const sceneTitle = options[i].textContent;
+                const sceneContent = projectData.scenes[sceneKey] || '[Contenu non rédigé]';
+                
+                novelContent += `### ${sceneTitle}\n\n${sceneContent}\n\n`;
+            }
+            
+            // Créer un élément pour le téléchargement
+            const element = document.createElement('a');
+            const file = new Blob([novelContent], {type: 'text/plain'});
+            element.href = URL.createObjectURL(file);
+            element.download = 'mon_roman.txt';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+        
+        // Afficher les paramètres de l'API
+        function showApiSettings() {
+            document.getElementById('api-settings-modal').style.display = 'block';
+            
+            // Charger les configurations existantes
+            document.getElementById('api-model').value = API_CONFIG.model || 'claude-3-opus-20240229';
+        }
+        
+        // Annuler les modifications des paramètres de l'API
+        function cancelApiSettings() {
+            document.getElementById('api-settings-modal').style.display = 'none';
+        }
+        
+        // Sauvegarder les paramètres de l'API
+        function saveApiSettings() {
+            API_CONFIG.model = document.getElementById('api-model').value;
+            
+            // Sauvegarder dans le stockage local
+            localStorage.setItem('novelPipelineAPIConfig', JSON.stringify(API_CONFIG));
+            
+            document.getElementById('api-settings-modal').style.display = 'none';
+            
+            // Tester la connexion au serveur proxy
+            fetch('http://localhost:3000/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: API_CONFIG.model,
+                    prompt: "Test de connexion",
+                    systemPrompt: "Réponds juste 'OK' pour tester la connexion."
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Configuration sauvegardée et connexion au serveur proxy réussie!');
+                } else {
+                    throw new Error('Erreur de connexion au serveur');
+                }
+            })
+            .catch(error => {
+                alert(`Erreur de connexion au serveur proxy. Assurez-vous que le serveur Node.js est en cours d'exécution sur http://localhost:3000\n\nErreur: ${error.message}`);
+            });
+        }
+        
+        // Charger les données au démarrage
+        window.onload = function() {
+            loadProjectData();
+            
+            // Charger la configuration API si elle existe
+            const savedApiConfig = localStorage.getItem('novelPipelineAPIConfig');
+            if (savedApiConfig) {
+                API_CONFIG = JSON.parse(savedApiConfig);
+            }
+        };
+    </script>
+</body>
+</html>
