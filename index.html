@@ -237,6 +237,9 @@
         <h2>Étape 2: Synopsis</h2>
         <p>Générez ou éditez le synopsis basé sur l'outline.</p>
         <textarea id="synopsis-input" placeholder="Votre synopsis apparaîtra ici..."></textarea>
+        <div style="text-align: right; margin-bottom: 10px;">
+            <span id="synopsis-word-count">0 mots</span> (minimum 700)
+        </div>
         <div class="button-container">
             <button onclick="goToStep(1)">Retour à l'Outline</button>
             <button onclick="proceedToStep(3)">Passer à l'étape 3: Chapter Beats</button>
@@ -252,6 +255,9 @@
         <h2>Étape 3: Chapter Beats</h2>
         <p>Définissez les points clés de chaque chapitre basés sur le synopsis.</p>
         <textarea id="chapter-beats-input" placeholder="Vos chapter beats apparaîtront ici..."></textarea>
+        <div style="text-align: right; margin-bottom: 10px;">
+            <span id="chapter-beats-word-count">0 mots</span> (minimum 700)
+        </div>
         <div class="button-container">
             <button onclick="goToStep(2)">Retour au Synopsis</button>
             <button onclick="proceedToStep(4)">Passer à l'étape 4: Scene Beats</button>
@@ -267,6 +273,9 @@
         <h2>Étape 4: Scene Beats</h2>
         <p>Détaillez chaque scène basée sur les chapter beats.</p>
         <textarea id="scene-beats-input" placeholder="Vos scene beats apparaîtront ici..."></textarea>
+        <div style="text-align: right; margin-bottom: 10px;">
+            <span id="scene-beats-word-count">0 mots</span> (minimum 700)
+        </div>
         <div class="button-container">
             <button onclick="goToStep(3)">Retour aux Chapter Beats</button>
             <button onclick="proceedToStep(5)">Passer à l'étape 5: Prose</button>
@@ -288,6 +297,9 @@
             </select>
             
             <textarea id="prose-input" placeholder="Rédigez la prose pour la scène sélectionnée ici..."></textarea>
+            <div style="text-align: right; margin-bottom: 10px;">
+                <span id="prose-word-count">0 mots</span> (minimum 700)
+            </div>
         </div>
         
         <div class="button-container">
@@ -306,7 +318,23 @@
         const API_CONFIG = {
             model: "claude-3-opus-20240229"  // Nom du modèle à utiliser par défaut
         };
-        
+
+        // Fonction pour compter les mots dans un texte
+        function countWords(text) {
+            return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        }
+
+        // Fonction pour mettre à jour le compteur de mots
+        function updateWordCount(inputId, counterId) {
+            const text = document.getElementById(inputId).value;
+            const wordCount = countWords(text);
+            const counter = document.getElementById(counterId);
+            if (counter) {
+                counter.textContent = `${wordCount} mots`;
+                counter.style.color = wordCount >= 700 ? 'green' : 'red';
+            }
+        }
+
         // Fonction pour générer du contenu avec un LLM
         async function generateContentWithLLM(fromStep, toStep) {
             // Vérifier que la configuration de l'API est complète
@@ -322,15 +350,15 @@
             switch(fromStep) {
                 case 1: // De Outline à Synopsis
                     sourceContent = document.getElementById('outline-input').value;
-                    prompt = `Transforme cette outline de roman en un synopsis cohérent et complet:\n\n${sourceContent}`;
+                    prompt = `Transforme cette outline de roman en un synopsis cohérent et complet d'au moins 700 mots:\n\n${sourceContent}`;
                     break;
                 case 2: // De Synopsis à Chapter Beats
                     sourceContent = document.getElementById('synopsis-input').value;
-                    prompt = `À partir de ce synopsis, crée une structure détaillée par chapitre (chapter beats):\n\n${sourceContent}`;
+                    prompt = `À partir de ce synopsis, crée une structure détaillée par chapitre (chapter beats) d'au moins 700 mots au total:\n\n${sourceContent}`;
                     break;
                 case 3: // De Chapter Beats à Scene Beats
                     sourceContent = document.getElementById('chapter-beats-input').value;
-                    prompt = `À partir de ces chapter beats, développe des scene beats détaillés pour chaque scène:\n\n${sourceContent}`;
+                    prompt = `À partir de ces chapter beats, développe des scene beats détaillés pour chaque scène. Le texte doit faire au moins 700 mots au total:\n\n${sourceContent}`;
                     break;
                 case 4: // De Scene Beats à Prose (pour une scène spécifique)
                     sourceContent = document.getElementById('scene-beats-input').value;
@@ -353,7 +381,7 @@
                         }
                     }
                     
-                    prompt = `Rédige la prose complète pour cette scène à partir de ces scene beats:\n\n${sceneContent}`;
+                    prompt = `Rédige la prose complète pour cette scène à partir de ces scene beats. La prose doit faire au moins 700 mots:\n\n${sceneContent}`;
                     break;
                 default:
                     return "Étape non reconnue pour la génération de contenu.";
@@ -390,7 +418,8 @@
                 throw error;
             }
         }
-// Structure de données pour stocker l'état du projet
+
+        // Structure de données pour stocker l'état du projet
         let projectData = {
             outline: '',
             synopsis: '',
@@ -419,6 +448,12 @@
                 
                 // Mettre à jour le sélecteur de scènes
                 updateSceneSelector();
+                
+                // Mettre à jour les compteurs de mots
+                updateWordCount('synopsis-input', 'synopsis-word-count');
+                updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
+                updateWordCount('scene-beats-input', 'scene-beats-word-count');
+                updateWordCount('prose-input', 'prose-word-count');
             }
         }
         
@@ -452,8 +487,14 @@
             
             // Mettre à jour les prévisualisations
             updatePreviews();
+            
+            // Mettre à jour les compteurs de mots
+            updateWordCount('synopsis-input', 'synopsis-word-count');
+            updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
+            updateWordCount('scene-beats-input', 'scene-beats-word-count');
+            updateWordCount('prose-input', 'prose-word-count');
         }
-        
+      
         // Passer à l'étape suivante avec validation
         function proceedToStep(step) {
             const currentStep = step - 1;
@@ -462,6 +503,15 @@
             if (!currentInput.trim()) {
                 alert(`Veuillez remplir le contenu de l'étape ${currentStep} avant de continuer.`);
                 return;
+            }
+            
+            // Vérification du nombre de mots minimum pour chaque étape
+            if (currentStep >= 2) { // Synopsis, Chapter Beats, Scene Beats
+                const wordCount = countWords(currentInput);
+                if (wordCount < 700) {
+                    alert(`Le contenu doit comporter au minimum 700 mots. Actuellement : ${wordCount} mots.`);
+                    return;
+                }
             }
             
             // Marquer l'étape actuelle comme complétée
@@ -473,11 +523,12 @@
             // Générer automatiquement le contenu de l'étape suivante via l'API LLM
             const nextInput = document.getElementById(`${getInputIdForStep(step)}-input`);
             if (!nextInput.value.trim()) {
-                // Ici, il faudrait appeler l'API du LLM
                 generateContentWithLLM(currentStep, step)
                     .then(generatedContent => {
                         nextInput.value = generatedContent;
                         saveProjectData();
+                        // Mettre à jour le compteur de mots après avoir généré le contenu
+                        updateWordCount(`${getInputIdForStep(step)}-input`, `${getInputIdForStep(step)}-word-count`);
                     })
                     .catch(error => {
                         console.error("Erreur lors de la génération de contenu:", error);
@@ -491,7 +542,8 @@
             const inputIds = ['outline', 'synopsis', 'chapter-beats', 'scene-beats', 'prose'];
             return inputIds[step - 1];
         }
-// Mettre à jour les prévisualisations
+        
+        // Mettre à jour les prévisualisations
         function updatePreviews() {
             document.getElementById('outline-preview').textContent = projectData.outline;
             document.getElementById('synopsis-preview').textContent = projectData.synopsis;
@@ -541,6 +593,12 @@
                 
                 // Vider le sélecteur de scènes
                 updateSceneSelector();
+                
+                // Réinitialiser les compteurs de mots
+                updateWordCount('synopsis-input', 'synopsis-word-count');
+                updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
+                updateWordCount('scene-beats-input', 'scene-beats-word-count');
+                updateWordCount('prose-input', 'prose-word-count');
             }
         }
         
@@ -587,6 +645,9 @@
                     const proseInput = document.getElementById('prose-input');
                     proseInput.value = projectData.scenes[selectedScene] || '';
                     
+                    // Mettre à jour le compteur de mots
+                    updateWordCount('prose-input', 'prose-word-count');
+                    
                     // Si la scène n'a pas encore de contenu et que les scene beats existent,
                     // générer automatiquement la prose
                     if (!projectData.scenes[selectedScene] && projectData.sceneBeats) {
@@ -595,6 +656,7 @@
                                 proseInput.value = generatedContent;
                                 projectData.scenes[selectedScene] = generatedContent;
                                 saveProjectData();
+                                updateWordCount('prose-input', 'prose-word-count');
                             })
                             .catch(error => {
                                 console.error("Erreur lors de la génération de la prose:", error);
@@ -621,6 +683,13 @@
                 return;
             }
             
+            // Vérification du nombre minimum de mots pour la prose
+            const wordCount = countWords(proseInput);
+            if (wordCount < 700) {
+                alert(`La prose doit comporter au minimum 700 mots. Actuellement : ${wordCount} mots.`);
+                return;
+            }
+            
             // Sauvegarder la prose pour cette scène
             projectData.scenes[selectedScene] = proseInput;
             saveProjectData();
@@ -633,6 +702,7 @@
                 if (options[i].value === selectedScene) {
                     nextSceneIndex = i + 1;
                     break;
+          
                 }
             }
             
@@ -643,6 +713,9 @@
                 // Déclencher l'événement change pour générer du contenu si nécessaire
                 const event = new Event('change');
                 selector.dispatchEvent(event);
+                
+                // Mettre à jour le compteur de mots pour la nouvelle scène
+                updateWordCount('prose-input', 'prose-word-count');
             } else {
                 alert('Vous avez terminé la rédaction de toutes les scènes !');
             }
@@ -727,6 +800,29 @@
         // Charger les données au démarrage
         window.onload = function() {
             loadProjectData();
+            
+            // Ajouter des écouteurs d'événements pour les compteurs de mots
+            document.getElementById('synopsis-input').addEventListener('input', function() {
+                updateWordCount('synopsis-input', 'synopsis-word-count');
+            });
+            
+            document.getElementById('chapter-beats-input').addEventListener('input', function() {
+                updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
+            });
+            
+            document.getElementById('scene-beats-input').addEventListener('input', function() {
+                updateWordCount('scene-beats-input', 'scene-beats-word-count');
+            });
+            
+            document.getElementById('prose-input').addEventListener('input', function() {
+                updateWordCount('prose-input', 'prose-word-count');
+            });
+            
+            // Initialiser les compteurs de mots
+            updateWordCount('synopsis-input', 'synopsis-word-count');
+            updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
+            updateWordCount('scene-beats-input', 'scene-beats-word-count');
+            updateWordCount('prose-input', 'prose-word-count');
             
             // Charger la configuration API si elle existe
             const savedApiConfig = localStorage.getItem('novelPipelineAPIConfig');
