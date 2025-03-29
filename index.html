@@ -553,6 +553,56 @@
             updateSceneSelector();
         }
         
+        // Mettre à jour le sélecteur de scènes
+        function updateSceneSelector() {
+            const sceneBeats = projectData.sceneBeats;
+            const selector = document.getElementById('scene-selector');
+            
+            // Vider le sélecteur
+            selector.innerHTML = '<option value="">Sélectionnez une scène à rédiger...</option>';
+            
+            if (sceneBeats) {
+                // Créer directement 9 scènes si elles n'existent pas déjà
+                for (let i = 1; i <= 9; i++) {
+                    const option = document.createElement('option');
+                    option.value = `scene-${i}`;
+                    option.textContent = `Scène ${i}`;
+                    selector.appendChild(option);
+                }
+            }
+            
+            // Supprimer tout écouteur d'événements existant pour éviter les doublons
+            const newSelector = selector.cloneNode(true);
+            selector.parentNode.replaceChild(newSelector, selector);
+            
+            // Écouter les changements de scène
+            newSelector.addEventListener('change', function() {
+                const selectedScene = this.value;
+                if (selectedScene) {
+                    const proseInput = document.getElementById('prose-input');
+                    proseInput.value = projectData.scenes[selectedScene] || '';
+                    
+                    // Mettre à jour le compteur de mots
+                    updateWordCount('prose-input', 'prose-word-count');
+                    
+                    // Si la scène n'a pas encore de contenu et que les scene beats existent,
+                    // générer automatiquement la prose
+                    if (!projectData.scenes[selectedScene] && projectData.sceneBeats) {
+                        generateContentWithLLM(4, 5)
+                            .then(generatedContent => {
+                                proseInput.value = generatedContent;
+                                projectData.scenes[selectedScene] = generatedContent;
+                                saveProjectData();
+                                updateWordCount('prose-input', 'prose-word-count');
+                            })
+                            .catch(error => {
+                                console.error("Erreur lors de la génération de la prose:", error);
+                            });
+                    }
+                }
+            });
+        }
+        
         // Réinitialiser le projet
         function saveAndReset() {
             if (confirm('Êtes-vous sûr de vouloir réinitialiser le projet ? Toutes les données seront effacées.')) {
@@ -591,79 +641,9 @@
                 
                 document.getElementById('panel-1').classList.add('active');
                 
-                // Vider le sélecteur de scènes
+                // Mettre à jour le sélecteur de scènes
                 updateSceneSelector();
-                
-                // Réinitialiser les compteurs de mots
-                updateWordCount('synopsis-input', 'synopsis-word-count');
-                updateWordCount('chapter-beats-input', 'chapter-beats-word-count');
-                updateWordCount('scene-beats-input', 'scene-beats-word-count');
-                updateWordCount('prose-input', 'prose-word-count');
             }
-        }
-        
-        // Mettre à jour le sélecteur de scènes
-        function updateSceneSelector() {
-            const sceneBeats = projectData.sceneBeats;
-            const selector = document.getElementById('scene-selector');
-            
-            // Vider le sélecteur
-            selector.innerHTML = '<option value="">Sélectionnez une scène à rédiger...</option>';
-            
-            if (sceneBeats) {
-                // Analyser les scènes à partir des scene beats
-                // Cette implémentation est simplifiée, elle suppose que chaque ligne commençant par "Scène" est une scène distincte
-                const sceneLines = sceneBeats.split('\n');
-                let currentScene = '';
-                let sceneCount = 0;
-                
-                sceneLines.forEach(line => {
-                    if (line.trim().toLowerCase().startsWith('scène') || line.trim().toLowerCase().startsWith('scene')) {
-                        sceneCount++;
-                        currentScene = line.trim();
-                        
-                        const option = document.createElement('option');
-                        option.value = `scene-${sceneCount}`;
-                        option.textContent = currentScene;
-                        selector.appendChild(option);
-                    }
-                });
-                
-                // Si aucune scène n'a été trouvée, ajouter une option générique
-                if (sceneCount === 0) {
-                    const option = document.createElement('option');
-                    option.value = 'scene-1';
-                    option.textContent = 'Scène 1';
-                    selector.appendChild(option);
-                }
-            }
-            
-            // Écouter les changements de scène
-            selector.addEventListener('change', function() {
-                const selectedScene = this.value;
-                if (selectedScene) {
-                    const proseInput = document.getElementById('prose-input');
-                    proseInput.value = projectData.scenes[selectedScene] || '';
-                    
-                    // Mettre à jour le compteur de mots
-                    updateWordCount('prose-input', 'prose-word-count');
-                    
-                    // Si la scène n'a pas encore de contenu et que les scene beats existent,
-                    // générer automatiquement la prose
-                    if (!projectData.scenes[selectedScene] && projectData.sceneBeats) {
-                        generateContentWithLLM(4, 5)
-                            .then(generatedContent => {
-                                proseInput.value = generatedContent;
-                                projectData.scenes[selectedScene] = generatedContent;
-                                saveProjectData();
-                                updateWordCount('prose-input', 'prose-word-count');
-                            })
-                            .catch(error => {
-                                console.error("Erreur lors de la génération de la prose:", error);
-                            });
-                    }
-                }
-            });
         }
         
         // Sauvegarder la prose et continuer
@@ -702,7 +682,6 @@
                 if (options[i].value === selectedScene) {
                     nextSceneIndex = i + 1;
                     break;
-          
                 }
             }
             
